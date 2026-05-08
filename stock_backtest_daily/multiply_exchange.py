@@ -33,12 +33,15 @@ USDJPY_FILE = BASE_DIR / "usd_jpy/usdjpy_daily_data.csv"
 
 fx = pd.read_csv(USDJPY_FILE)
 
-# timezone除去
-fx["Date"] = (
-    pd.to_datetime(fx["Date"], utc=True)
-    .dt.tz_convert(None)
-    .dt.normalize()
-)
+# # timezone除去
+# fx["Date"] = (
+#     pd.to_datetime(fx["Date"], utc=True)
+#     .dt.tz_convert(None)
+#     .dt.normalize()
+# )
+# 文字列として先頭10文字 (2026-04-30 など) だけを抜き出して日付型にする
+# これによりサマータイムによる「前日への逆戻り」を物理的に防ぐ
+fx["Date"] = pd.to_datetime(fx["Date"].astype(str).str[:10])
 
 fx = fx.sort_values("Date").reset_index(drop=True)
 
@@ -62,11 +65,12 @@ for target in TARGETS:
     df = pd.read_csv(target["input"])
 
     # timezone除去
-    df["Date"] = (
-        pd.to_datetime(df["Date"], utc=True)
-        .dt.tz_convert(None)
-        .dt.normalize()
-    )
+    # df["Date"] = (
+    #     pd.to_datetime(df["Date"], utc=True)
+    #     .dt.tz_convert(None)
+    #     .dt.normalize()
+    # )
+    df["Date"] = pd.to_datetime(df["Date"].astype(str).str[:10])
 
     df = df.sort_values("Date").reset_index(drop=True)
 
