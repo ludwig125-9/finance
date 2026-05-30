@@ -23,6 +23,11 @@ TARGETS = [
         "input": BASE_DIR / "sp500/sp500_daily_data.csv",
         "output": BASE_DIR / "sp500/sp500_daily_yen.csv",
     },
+    {
+        "name": "msci",
+        "input": BASE_DIR / "msci/msci_daily_data.csv",
+        "output": BASE_DIR / "msci/msci_daily_yen.csv",
+    },
 ]
 
 USDJPY_FILE = BASE_DIR / "usd_jpy/usdjpy_daily_data.csv"
@@ -134,7 +139,7 @@ print("\nDone.")
 # Stock rows: 6879
 # Merged rows: 6879
 # Missing FX rows: 0
-# Saved: /home/shingo/git/ludwig125-9/finance/stock_backtest_daily/nasdaq100/nq100_daily_yen.csv
+# Saved: ludwig125-9/finance/stock_backtest_daily/nasdaq100/nq100_daily_yen.csv
 
 # ===================================
 # sox
@@ -142,7 +147,7 @@ print("\nDone.")
 # Stock rows: 6878
 # Merged rows: 6878
 # Missing FX rows: 0
-# Saved: /home/shingo/git/ludwig125-9/finance/stock_backtest_daily/sox/sox_daily_yen.csv
+# Saved: ludwig125-9/finance/stock_backtest_daily/sox/sox_daily_yen.csv
 
 # ===================================
 # sp500
@@ -150,6 +155,6 @@ print("\nDone.")
 # Stock rows: 6879
 # Merged rows: 6879
 # Missing FX rows: 0
-# Saved: /home/shingo/git/ludwig125-9/finance/stock_backtest_daily/sp500/sp500_daily_yen.csv
+# Saved: ludwig125-9/finance/stock_backtest_daily/sp500/sp500_daily_yen.csv
 
 # Done.
