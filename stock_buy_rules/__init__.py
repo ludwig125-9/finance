@@ -1,0 +1,1 @@
+"""Stock buy rule utilities."""
