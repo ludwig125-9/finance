@@ -63,33 +63,27 @@ def load_daily_price_csv(csv_path: Path | str) -> pd.DataFrame:
     )
 
 
-def get_sp500_last_year_monthly_data(
+def get_sp500_last_year_daily_data(
     target_date: str | pd.Timestamp,
     csv_path: Path | str = DEFAULT_SP500_CSV,
 ) -> pd.DataFrame:
-    """Return S&P 500 monthly OHLC rows for the year ending at target_date."""
+    """Return S&P 500 daily OHLC rows for the 365 days ending at target_date."""
     target = parse_yyyymmdd(target_date) if isinstance(target_date, str) else pd.Timestamp(target_date).normalize()
-    start = target - pd.DateOffset(years=1)
+    start = target - pd.Timedelta(days=365)
     daily = load_daily_price_csv(csv_path)
     target_daily = daily[(daily["Date"] >= start) & (daily["Date"] <= target)]
     if target_daily.empty:
         raise ValueError(f"S&P500データがありません: {start.date()} ～ {target.date()}")
 
-    monthly = (
-        target_daily.assign(Month=target_daily["Date"].dt.to_period("M"))
-        .groupby("Month", as_index=False)
-        .agg(
-            Date=("Date", "max"),
-            Open=("Open", "first"),
-            High=("High", "max"),
-            Low=("Low", "min"),
-            Close=("Close", "last"),
-        )
-        .drop(columns=["Month"])
-        .sort_values("Date")
-        .reset_index(drop=True)
-    )
-    return monthly
+    return target_daily.sort_values("Date").reset_index(drop=True)
+
+
+def get_sp500_last_year_monthly_data(
+    target_date: str | pd.Timestamp,
+    csv_path: Path | str = DEFAULT_SP500_CSV,
+) -> pd.DataFrame:
+    """Backward-compatible alias for get_sp500_last_year_daily_data."""
+    return get_sp500_last_year_daily_data(target_date, csv_path)
 
 
 def get_vix_data_for_date(
@@ -106,23 +100,27 @@ def get_vix_data_for_date(
 
 
 def get_sp500_high_and_nearest_close(
-    sp500_monthly_data: pd.DataFrame,
+    sp500_daily_data: pd.DataFrame,
     target_date: str | pd.Timestamp,
 ) -> tuple[float, float, pd.Timestamp]:
     """Return the highest High and the Close closest to target_date."""
-    if sp500_monthly_data.empty:
+    if sp500_daily_data.empty:
         raise ValueError("S&P500データが空です")
 
     target = parse_yyyymmdd(target_date) if isinstance(target_date, str) else pd.Timestamp(target_date).normalize()
-    df = sp500_monthly_data.copy()
+    df = sp500_daily_data.copy()
     df["Date"] = pd.to_datetime(df["Date"]).dt.normalize()
-    nearest_index = (df["Date"] - target).abs().idxmin()
-    nearest_row = df.loc[nearest_index]
+    nearest_row = df[df["Date"] <= target].tail(1)
+    if nearest_row.empty:
+        nearest_index = (df["Date"] - target).abs().idxmin()
+        nearest = df.loc[nearest_index]
+    else:
+        nearest = nearest_row.iloc[0]
 
     return (
         float(df["High"].max()),
-        float(nearest_row["Close"]),
-        pd.Timestamp(nearest_row["Date"]),
+        float(nearest["Close"]),
+        pd.Timestamp(nearest["Date"]),
     )
 
 
@@ -165,11 +163,11 @@ def evaluate_buy_signal(
 ) -> BuySignalResult:
     target = parse_yyyymmdd(target_date) if isinstance(target_date, str) else pd.Timestamp(target_date).normalize()
 
-    sp500_monthly_data = get_sp500_last_year_monthly_data(target, sp500_csv_path)
+    sp500_daily_data = get_sp500_last_year_daily_data(target, sp500_csv_path)
     vix_data = get_vix_data_for_date(target, vix_csv_path)
 
     sp500_highest_high, sp500_nearest_close, sp500_close_date = get_sp500_high_and_nearest_close(
-        sp500_monthly_data,
+        sp500_daily_data,
         target,
     )
     vix_high, vix_date = get_vix_high(vix_data)
