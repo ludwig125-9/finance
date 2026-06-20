@@ -233,6 +233,7 @@ Saved: portfolio_rebalance_backtest_summary.csv
 (.venv) ~/git/ludwig125-9/finance/stock_backtest$
 ```
 
+```
 (.venv) [~/git/ludwig125-9/finance/stock_backtest] $python3 backtest_summary_since199907_with_msci.py
 
 ============================================================
@@ -382,11 +383,10 @@ orucan_multiply_dollar_yen_since199907         LumpSum       99.437151          
 
 Saved: ALL_ASSETS_COMBINED_SUMMARY.csv
 (.venv) [~/git/ludwig125-9/finance/stock_backtest] $python3 backtest_summary_since199907_with_msci.py
-
+```
 
 
 ## buy_the_dip_simulation_with_backtest.py
-
 ```
 ==============================================
 Top 30 Best Crash Buy Strategies
