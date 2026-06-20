@@ -94,6 +94,27 @@ backtest_sp500_vix_buy_rule.py: 期間全体のバックテスト、ローリン
 ```
 
 
+# スコア別フォワードリターン
+
+`stock_buy_rules/forward_return_by_score.py` は、買いシグナルが出た日にS&P500を買った場合の、1年後・3年後・10年後のリターンをスコア別に集計します。
+
+```bash
+.venv/bin/python stock_buy_rules/forward_return_by_score.py --years 1 3 10
+```
+
+集計結果CSVも保存する場合:
+
+```bash
+.venv/bin/python stock_buy_rules/forward_return_by_score.py --years 1 3 10 --output-csv stock_buy_rules/forward_return_by_score.csv
+```
+
+シグナルごとの明細も保存する場合:
+
+```bash
+.venv/bin/python stock_buy_rules/forward_return_by_score.py --years 1 3 10 --detail-csv stock_buy_rules/forward_return_detail.csv
+```
+
+
 ## 3. 資金投入シグナルと実行ルール（s * v）
 
 合計スコアが 1,000以上 で買いシグナルが点灯します。最大値は 100 * 100 = 10,000 です。
