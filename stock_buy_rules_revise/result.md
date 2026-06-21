@@ -1,3 +1,9 @@
+コマンド
+```
+python3 forward_return_by_score.py --years 1 3 10 --output-csv revise_forward_summary.csv --detail-csv revise_forward_detail.csv
+```
+
+
 `revise_forward_summary.csv` から見ると、かなりはっきり言えます。
 
 一番良さそうなのは **`S_E__V_D` または `S_E__V_E`** です。

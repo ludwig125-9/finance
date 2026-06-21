@@ -15,7 +15,8 @@ try:
         build_point_patterns,
         calculate_sp500_drawdown_point,
         calculate_vix_point,
-        load_daily_price_csv,
+        # load_daily_price_csv,
+        prepare_base_data,  # 共通化された前処理をインポート
     )
 except ModuleNotFoundError:
     from sp500_vix_buy_rule import (
@@ -26,28 +27,9 @@ except ModuleNotFoundError:
         build_point_patterns,
         calculate_sp500_drawdown_point,
         calculate_vix_point,
-        load_daily_price_csv,
+        # load_daily_price_csv,
+        prepare_base_data,  # 共通化された前処理をインポート
     )
-
-
-def prepare_base_data(
-    sp500_csv_path: Path | str = DEFAULT_SP500_CSV,
-    vix_csv_path: Path | str = DEFAULT_VIX_CSV,
-) -> pd.DataFrame:
-    sp500 = load_daily_price_csv(sp500_csv_path)
-    vix = load_daily_price_csv(vix_csv_path)
-
-    sp500 = sp500[["Date", "High", "Close"]].rename(
-        columns={"High": "SP500_High", "Close": "SP500_Close"}
-    )
-    vix = vix[["Date", "High"]].rename(columns={"High": "VIX_High"})
-
-    df = sp500.merge(vix, on="Date", how="inner").sort_values("Date").reset_index(drop=True)
-    df["SP500_1Y_High"] = df.rolling("365D", on="Date")["SP500_High"].max()
-    df["SP500_Drawdown_Rate"] = (
-        df["SP500_1Y_High"] - df["SP500_Close"]
-    ) / df["SP500_1Y_High"]
-    return df
 
 
 def prepare_signal_data(
@@ -63,15 +45,12 @@ def prepare_signal_data(
     df["point_pattern"] = point_pattern.name
     df["max_signal_score"] = point_pattern.max_signal_score
     df["buy_signal_threshold"] = scaled_threshold
-    df["SP500_Point"] = df["SP500_Drawdown_Rate"].map(
-        lambda drawdown_rate: calculate_sp500_drawdown_point(drawdown_rate, point_pattern)
-    )
-    df["VIX_Point"] = df["VIX_High"].map(
-        lambda vix_high: calculate_vix_point(vix_high, point_pattern)
-    )
-    df["Signal_Score"] = (df["SP500_Point"] * df["VIX_Point"]).clip(
-        upper=point_pattern.max_signal_score
-    )
+
+    # map(lambda) から、より高速なSeriesに対する直接適用に変更
+    df["SP500_Point"] = df["SP500_Drawdown_Rate"].apply(calculate_sp500_drawdown_point, args=(point_pattern,))
+    df["VIX_Point"] = df["VIX_High"].apply(calculate_vix_point, args=(point_pattern,))
+
+    df["Signal_Score"] = (df["SP500_Point"] * df["VIX_Point"]).clip(upper=point_pattern.max_signal_score)
     df["Buy_Amount"] = df["Signal_Score"].where(df["Signal_Score"] >= scaled_threshold, 0)
     return df
 
