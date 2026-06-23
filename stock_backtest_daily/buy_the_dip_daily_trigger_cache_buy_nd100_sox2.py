@@ -16,6 +16,7 @@ OUTPUT_FILE = "compare_vix_dca_buyhold_10y.csv"
 # =========================
 
 INITIAL_CASH = 1000
+INITIAL_RATIOS = [0.0, 0.2, 0.4]
 
 WINDOW_YEARS = 10
 START_INTERVAL = 21  # 約1か月ごとに開始
@@ -236,12 +237,30 @@ def simulate_vix_trigger(
     vix_threshold,
     buy_ratios,
     target_ratio,
+    initial_ratio,
 ):
     nq_ratio, sox_ratio = target_ratio
 
-    cash = INITIAL_CASH
-    nq_shares = 0.0
-    sox_shares = 0.0
+    # --------------------------
+    # 初回一括投資
+    # --------------------------
+    initial_buy_cash = INITIAL_CASH * initial_ratio
+
+    cash = INITIAL_CASH - initial_buy_cash
+
+    nq_buy_cash = initial_buy_cash * nq_ratio
+    sox_buy_cash = initial_buy_cash * sox_ratio
+
+    nq_shares = nq_buy_cash / nq_price[start_idx]
+    sox_shares = sox_buy_cash / sox_price[start_idx]
+    # initial_buy = INITIAL_CASH * initial_ratio
+
+    # cash = INITIAL_CASH - initial_buy
+    # nq_shares = (initial_buy * nq_ratio) / nq_price[start_idx]
+    # sox_shares = (initial_buy * sox_ratio) / sox_price[start_idx]
+    # cash = INITIAL_CASH
+    # nq_shares = 0.0
+    # sox_shares = 0.0
 
     portfolio_values = []
     trigger_count = 0
@@ -388,8 +407,9 @@ for target_ratio in BUY_TARGET_RATIOS:
 # VIX Trigger
 # -------------------------
 
-for vix_threshold, buy_ratios, target_ratio in product(
+for vix_threshold, initial_ratio, buy_ratios, target_ratio in product(
     VIX_THRESHOLDS,
+    INITIAL_RATIOS,
     BUY_RATIOS_LIST,
     BUY_TARGET_RATIOS,
 ):
@@ -406,6 +426,7 @@ for vix_threshold, buy_ratios, target_ratio in product(
             vix_threshold,
             buy_ratios,
             target_ratio,
+            initial_ratio,
         )
 
         total_return, cagr, max_dd = calc_metrics(pv, INITIAL_CASH)
@@ -421,6 +442,7 @@ for vix_threshold, buy_ratios, target_ratio in product(
         "vix_threshold": vix_threshold,
         "buy_ratios": buy_ratios,
         "buy_target_ratio": target_ratio,
+        "initial_ratio": initial_ratio,
 
         "avg_return_pct": np.mean(returns),
         "median_return_pct": np.median(returns),
