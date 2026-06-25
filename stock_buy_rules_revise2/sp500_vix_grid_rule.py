@@ -215,18 +215,18 @@ def summarize_values(values: Iterable[float]) -> dict[str, Optional[float] | int
     if not collected:
         return {
             "signal_count": 0,
-            "total_return_avg": None,
-            "total_return_median": None,
-            "total_return_min": None,
-            "total_return_max": None,
+            "total_return_avg_pct": None,
+            "total_return_median_pct": None,
+            "total_return_min_pct": None,
+            "total_return_max_pct": None,
         }
 
     return {
         "signal_count": len(collected),
-        "total_return_avg": mean(collected),
-        "total_return_median": median(collected),
-        "total_return_min": min(collected),
-        "total_return_max": max(collected),
+        "total_return_avg_pct": mean(collected) * 100,
+        "total_return_median_pct": median(collected) * 100,
+        "total_return_min_pct": min(collected) * 100,
+        "total_return_max_pct": max(collected) * 100,
     }
 
 
@@ -302,7 +302,7 @@ def write_csv(path: Path | str, rows: Sequence[dict[str, object]]) -> None:
 def percent(value: object) -> str:
     if value is None:
         return ""
-    return f"{float(value) * 100:.2f}%"
+    return f"{float(value):.2f}%"
 
 
 def format_top_rules(
@@ -319,9 +319,9 @@ def format_top_rules(
     ]
     rows.sort(
         key=lambda row: (
-            row["total_return_min"] is not None,
-            row["total_return_min"] or -999,
-            row["total_return_median"] or -999,
+            row["total_return_min_pct"] is not None,
+            row["total_return_min_pct"] or -999,
+            row["total_return_median_pct"] or -999,
         ),
         reverse=True,
     )
@@ -337,10 +337,10 @@ def format_top_rules(
                     str(row["rule_id"]),
                     str(row["buy_cell_count"]),
                     str(row["signal_count"]),
-                    percent(row["total_return_avg"]),
-                    percent(row["total_return_median"]),
-                    percent(row["total_return_min"]),
-                    percent(row["total_return_max"]),
+                    percent(row["total_return_avg_pct"]),
+                    percent(row["total_return_median_pct"]),
+                    percent(row["total_return_min_pct"]),
+                    percent(row["total_return_max_pct"]),
                     str(row["rule_description"]),
                 ]
             )
@@ -371,10 +371,10 @@ def format_cell_summary(
                     str(row["drawdown_label"]),
                     str(row["vix_label"]),
                     str(row["signal_count"]),
-                    percent(row["total_return_avg"]),
-                    percent(row["total_return_median"]),
-                    percent(row["total_return_min"]),
-                    percent(row["total_return_max"]),
+                    percent(row["total_return_avg_pct"]),
+                    percent(row["total_return_median_pct"]),
+                    percent(row["total_return_min_pct"]),
+                    percent(row["total_return_max_pct"]),
                 ]
             )
         )
