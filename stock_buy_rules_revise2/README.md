@@ -15,15 +15,15 @@ VIX:              20-25, 25-30, 30-35, 35+
 ## Run
 
 ```bash
-python3 stock_buy_rules_revise2/sp500_vix_grid_rule.py
+python3 sp500_vix_grid_rule.py
 ```
 
 CSVに保存する場合:
 
 ```bash
-python3 stock_buy_rules_revise2/sp500_vix_grid_rule.py \
-  --cell-summary-csv stock_buy_rules_revise2/grid_cell_summary.csv \
-  --rule-summary-csv stock_buy_rules_revise2/monotone_rule_summary.csv
+python3 sp500_vix_grid_rule.py \
+  --cell-summary-csv grid_cell_summary.csv \
+  --rule-summary-csv monotone_rule_summary.csv
 ```
 
 ## Outputs
@@ -32,3 +32,26 @@ python3 stock_buy_rules_revise2/sp500_vix_grid_rule.py \
 * `monotone_rule_summary.csv`: 単調な買いルール70通りごとのフォワードリターン
 
 `rule_description` は、各S&P500下落率セルで最低どのVIX水準から買うかを表します。
+
+
+## 結果
+
+
+Sランク（全力）
+15〜20 ×35+
+25+ ×35+
+10〜15 ×35+
+25+ ×30〜35
+
+ここは期待値がかなり高い
+
+Aランク（多め）
+20〜25 ×30〜35
+20〜25 ×25〜30
+15〜20 ×30〜35
+10〜15 ×30〜35
+
+Bランク（普通）
+25+ ×25〜30
+15〜20 ×25〜30
+10〜15 ×25〜30
