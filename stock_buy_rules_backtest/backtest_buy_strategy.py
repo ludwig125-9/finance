@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import statistics
 from pathlib import Path
 
-import pandas as pd
-
-from market import (
+from sp500_vix_grid_rule import (
     DEFAULT_SP500_CSV,
     DEFAULT_VIX_CSV,
     DailyMarket,
@@ -15,7 +15,10 @@ from market import (
 from strategy import (
     BuyStrategy,
     PortfolioSimulator,
+    SimulationResult,
     create_all_strategies,
+    percentile,
+    signal_counts_to_string,
 )
 
 # ============================================================
@@ -38,19 +41,15 @@ def simulate_one_period(
     holding_years: int,
     strategy: BuyStrategy,
     initial_cash: float,
-) -> dict | None:
+) -> SimulationResult | None:
     """
     開始日を固定した1回分のバックテスト
 
     Returns
     -------
-    dict
+    SimulationResult
 
-        {
-            "total_return": ...,
-            "remain_pct": ...,
-            ...
-        }
+        1開始日分のバックテスト結果。
 
     holding_years後のデータが存在しない場合は None を返す。
     """
@@ -89,7 +88,7 @@ def simulate_strategy(
     holding_years: int,
     strategy: BuyStrategy,
     initial_cash: float,
-) -> list[dict]:
+) -> list[SimulationResult]:
     """
     ある1つのBuyStrategyについて、
     全開始日でシミュレーションを実施する。
@@ -119,7 +118,7 @@ def simulate_strategy(
 
 
 def aggregate_results(
-    results: list[dict],
+    results: list[SimulationResult],
     strategy: BuyStrategy,
     holding_years: int,
 ) -> dict:
@@ -130,17 +129,18 @@ def aggregate_results(
     if not results:
         raise ValueError("results is empty")
 
-    returns = [r["total_return"] * 100 for r in results]
+    returns = [r.total_return * 100 for r in results]
 
-    remain = [r["remain_pct"] for r in results]
+    remain = [r.remain_pct for r in results]
 
-    invested = [r["invested_pct"] for r in results]
+    invested = [r.invested_pct for r in results]
 
-    avg_cash = [r["average_cash_pct"] for r in results]
+    avg_cash = [r.average_cash_pct for r in results]
 
-    avg_stock = [r["average_stock_pct"] for r in results]
+    avg_stock = [r.average_stock_pct for r in results]
 
-    buy_count = [r["executed_buy_count"] for r in results]
+    buy_count = [r.executed_buy_count for r in results]
+    signal_count = [sum(r.signal_counts) for r in results]
 
     #
     # signal count
@@ -150,39 +150,27 @@ def aggregate_results(
 
     for r in results:
         for i in range(11):
-            signal_counts[i] += r["signal_counts"][i]
+            signal_counts[i] += r.signal_counts[i]
 
     signal_counts = [round(v / len(results)) for v in signal_counts]
 
     return {
         "holding_years": holding_years,
-        "sp": strategy.sp,
-        "ap": strategy.ap,
-        "bp": strategy.bp,
-        "remain_pct": sum(remain) / len(remain),
-        "invested_pct": sum(invested) / len(invested),
-        "average_cash_pct": sum(avg_cash) / len(avg_cash),
-        "average_stock_pct": sum(avg_stock) / len(avg_stock),
-        "executed_buy_count": sum(buy_count) / len(buy_count),
-        "total_return_avg_pct": sum(returns) / len(returns),
-        "total_return_median_pct": pd.Series(returns).median(),
+        "buy_pct_by_rank": strategy.key,
+        "count_by_rank": signal_counts_to_string(signal_counts),
+        "signal_count": statistics.mean(signal_count),
+        "executed_buy_count": statistics.mean(buy_count),
+        "invested_total_pct": statistics.mean(invested),
+        "remain_pct": statistics.mean(remain),
+        "average_cash_pct": statistics.mean(avg_cash),
+        "average_invested_pct": statistics.mean(avg_stock),
+        "total_return_avg_pct": statistics.mean(returns),
+        "total_return_median_pct": statistics.median(returns),
+        "total_return_5pct": percentile(returns, 0.05),
         "total_return_min_pct": min(returns),
         "total_return_max_pct": max(returns),
-        "s1_count": signal_counts[0],
-        "s2_count": signal_counts[1],
-        "s3_count": signal_counts[2],
-        "s4_count": signal_counts[3],
-        "a1_count": signal_counts[4],
-        "a2_count": signal_counts[5],
-        "a3_count": signal_counts[6],
-        "a4_count": signal_counts[7],
-        "b1_count": signal_counts[8],
-        "b2_count": signal_counts[9],
-        "b3_count": signal_counts[10],
     }
 
-
-import statistics
 
 # ============================================================
 # Result Accumulator
@@ -191,7 +179,7 @@ import statistics
 
 class ResultAccumulator:
 
-    def __init__(
+    def _init_(
         self,
         strategy: BuyStrategy,
         holding_years: int,
@@ -212,6 +200,8 @@ class ResultAccumulator:
 
         self.buy_counts = []
 
+        self.signal_total_counts = []
+
         self.signal_counts = [0] * 11
 
         self.simulation_count = 0
@@ -220,24 +210,25 @@ class ResultAccumulator:
 
     def add(
         self,
-        result: dict,
+        result: SimulationResult,
     ) -> None:
 
         self.simulation_count += 1
 
-        self.returns.append(result["total_return"] * 100)
+        self.returns.append(result.total_return * 100)
 
-        self.remain.append(result["remain_pct"])
+        self.remain.append(result.remain_pct)
 
-        self.invested.append(result["invested_pct"])
+        self.invested.append(result.invested_pct)
 
-        self.avg_cash.append(result["average_cash_pct"])
+        self.avg_cash.append(result.average_cash_pct)
 
-        self.avg_stock.append(result["average_stock_pct"])
+        self.avg_stock.append(result.average_stock_pct)
 
-        self.buy_counts.append(result["executed_buy_count"])
+        self.buy_counts.append(result.executed_buy_count)
 
-        counts = result["signal_counts"]
+        counts = result.signal_counts
+        self.signal_total_counts.append(sum(counts))
 
         for i in range(11):
             self.signal_counts[i] += counts[i]
@@ -252,29 +243,19 @@ class ResultAccumulator:
 
         return {
             "holding_years": self.holding_years,
-            "sp": self.strategy.sp,
-            "ap": self.strategy.ap,
-            "bp": self.strategy.bp,
-            "remain_pct": statistics.mean(self.remain),
-            "invested_pct": statistics.mean(self.invested),
-            "average_cash_pct": statistics.mean(self.avg_cash),
-            "average_stock_pct": statistics.mean(self.avg_stock),
+            "buy_pct_by_rank": self.strategy.key,
+            "count_by_rank": signal_counts_to_string(avg_signal_counts),
+            "signal_count": statistics.mean(self.signal_total_counts),
             "executed_buy_count": statistics.mean(self.buy_counts),
+            "invested_total_pct": statistics.mean(self.invested),
+            "remain_pct": statistics.mean(self.remain),
+            "average_cash_pct": statistics.mean(self.avg_cash),
+            "average_invested_pct": statistics.mean(self.avg_stock),
             "total_return_avg_pct": statistics.mean(self.returns),
             "total_return_median_pct": statistics.median(self.returns),
+            "total_return_5pct": percentile(self.returns, 0.05),
             "total_return_min_pct": min(self.returns),
             "total_return_max_pct": max(self.returns),
-            "s1_count": avg_signal_counts[0],
-            "s2_count": avg_signal_counts[1],
-            "s3_count": avg_signal_counts[2],
-            "s4_count": avg_signal_counts[3],
-            "a1_count": avg_signal_counts[4],
-            "a2_count": avg_signal_counts[5],
-            "a3_count": avg_signal_counts[6],
-            "a4_count": avg_signal_counts[7],
-            "b1_count": avg_signal_counts[8],
-            "b2_count": avg_signal_counts[9],
-            "b3_count": avg_signal_counts[10],
         }
 
 
@@ -321,15 +302,15 @@ def run_one_strategy(
 def run_all_strategies(
     market_data: list[DailyMarket],
     initial_cash: float,
-) -> pd.DataFrame:
+) -> list[dict]:
     """
     全1331戦略をバックテストし、
-    DataFrame を返す。
+    CSV出力用の行を返す。
     """
 
     rows: list[dict] = []
 
-    strategies = create_all_strategies()
+    strategies = list(create_all_strategies())
 
     total = len(strategies) * len(DEFAULT_HOLDING_YEARS)
 
@@ -362,40 +343,24 @@ def run_all_strategies(
 
     print()
 
-    df = pd.DataFrame(rows)
-
-    #
-    # 並び順を固定
-    #
-
     columns = [
         "holding_years",
-        "sp",
-        "ap",
-        "bp",
-        "remain_pct",
-        "invested_pct",
-        "average_cash_pct",
-        "average_stock_pct",
+        "buy_pct_by_rank",
+        "count_by_rank",
+        "signal_count",
         "executed_buy_count",
+        "invested_total_pct",
+        "remain_pct",
+        "average_cash_pct",
+        "average_invested_pct",
         "total_return_avg_pct",
         "total_return_median_pct",
+        "total_return_5pct",
         "total_return_min_pct",
         "total_return_max_pct",
-        "s1_count",
-        "s2_count",
-        "s3_count",
-        "s4_count",
-        "a1_count",
-        "a2_count",
-        "a3_count",
-        "a4_count",
-        "b1_count",
-        "b2_count",
-        "b3_count",
     ]
 
-    return df[columns]
+    return [{column: row[column] for column in columns} for row in rows]
 
 
 # ============================================================
@@ -458,24 +423,23 @@ def main() -> None:
 
     print("Running backtest...")
 
-    df = run_all_strategies(
+    rows = run_all_strategies(
         market_data=market_data,
         initial_cash=args.initial_cash,
     )
 
     print(f"Writing {args.output}")
 
-    df.to_csv(
-        args.output,
-        index=False,
-        float_format="%.6f",
-    )
+    with args.output.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
 
     print()
 
     print("Finished")
 
-    print(f"Rows: {len(df)}")
+    print(f"Rows: {len(rows)}")
 
     print(f"Output: {args.output.resolve()}")
 

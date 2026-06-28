@@ -10,6 +10,8 @@ from pathlib import Path
 from statistics import mean, median
 from typing import Iterable, Optional, Sequence
 
+from strategy import Signal, SignalJudge
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SP500_CSV = (
     REPO_ROOT / "stock_backtest_daily" / "sp500" / "sp500_daily_data.csv"
@@ -69,8 +71,7 @@ class DailyMarket:
     drawdown_bucket: Optional[Bucket]
     vix_bucket: Optional[Bucket]
     future_closes: dict[int, tuple[date, float]]
-    signal_rank: SignalRank
-    signal_name: SignalName
+    signal: Signal
 
     future_indices: dict[int, int]
 
@@ -194,7 +195,7 @@ def prepare_market_data(
 
                 future_indices[years] = future_index
 
-        signal_rank, signal_name = SignalJudge.judge_values(
+        signal = SignalJudge.judge_values(
             drawdown_rate,
             vix_high_by_date[day],
         )
@@ -209,10 +210,7 @@ def prepare_market_data(
                 drawdown_bucket=find_bucket(drawdown_rate, DRAWDOWN_BUCKETS),
                 vix_bucket=find_bucket(vix_high_by_date[day], VIX_BUCKETS),
                 future_closes=future_closes,
-                # ★追加
-                signal_rank=signal_rank,
-                signal_name=signal_name,
-                # ★追加
+                signal=signal,
                 future_indices=future_indices,
             )
         )

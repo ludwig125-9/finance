@@ -116,13 +116,13 @@ class BuyStrategy:
         購入割合 (0.0〜1.0)
         """
 
-        if signal.is_s:
+        if signal.rank == "S":
             return self.sp / 100.0
 
-        if signal.is_a:
+        if signal.rank == "A":
             return self.ap / 100.0
 
-        if signal.is_b:
+        if signal.rank == "B":
             return self.bp / 100.0
 
         return 0.0
@@ -525,6 +525,21 @@ def signal_counts_to_string(signal_counts: list[int]) -> str:
     return "(" + ",".join(parts) + ")"
 
 
+def percentile(values: list[float], pct: float) -> float:
+    sorted_values = sorted(values)
+    if len(sorted_values) == 1:
+        return sorted_values[0]
+
+    position = (len(sorted_values) - 1) * pct
+    lower_index = int(position)
+    upper_index = min(lower_index + 1, len(sorted_values) - 1)
+    weight = position - lower_index
+
+    return (
+        sorted_values[lower_index] * (1 - weight) + sorted_values[upper_index] * weight
+    )
+
+
 def summarize_results(
     results: Iterable[SimulationResult],
     strategy: BuyStrategy,
@@ -550,6 +565,7 @@ def summarize_results(
     avg_stock = [r.average_stock_pct for r in results]
 
     buy_counts = [r.executed_buy_count for r in results]
+    signal_count = [sum(r.signal_counts) for r in results]
 
     #
     # signal count
@@ -568,13 +584,15 @@ def summarize_results(
         "holding_years": holding_years,
         "count_by_rank": signal_counts_to_string(signal_counts),
         "buy_pct_by_rank": strategy.key,
-        "remain_pct": mean(remain),
-        "invested_pct": mean(invested),
-        "average_cash_pct": mean(avg_cash),
-        "average_stock_pct": mean(avg_stock),
+        "signal_count": mean(signal_count),
         "executed_buy_count": mean(buy_counts),
+        "invested_total_pct": mean(invested),
+        "remain_pct": mean(remain),
+        "average_cash_pct": mean(avg_cash),
+        "average_invested_pct": mean(avg_stock),
         "total_return_avg_pct": mean(returns),
         "total_return_median_pct": median(returns),
+        "total_return_5pct": percentile(returns, 0.05),
         "total_return_min_pct": min(returns),
         "total_return_max_pct": max(returns),
     }
